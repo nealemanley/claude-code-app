@@ -398,7 +398,7 @@
 </div>
 
 <script>
-const skillData = {
+let skillData = {
   "StemForge": [
     { cmd: "/start-server", desc: "check venv, verify FFmpeg codecs, launch the app" },
     { cmd: "/debug-visra", desc: "debug visualiser — live preview or video export" },
@@ -563,8 +563,11 @@ function buildSkills() {
 }
 
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   initTerminal()
+  if (window.electronAPI) {
+    skillData = await window.electronAPI.scanSkills()
+  }
   buildSkills()
 })
 </script>
