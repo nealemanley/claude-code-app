@@ -522,6 +522,7 @@ function switchTab(el) {
   const tab = el.dataset.tab
   document.getElementById('pane-' + tab).classList.add('active')
   if (tab === 'terminal') setTimeout(() => { if(fitAddon) fitAddon.fit() }, 50)
+  if (tab === 'skills') buildSkills()
 }
 
 function activateSession(proj, path) {
