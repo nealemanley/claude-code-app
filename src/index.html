@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code</title>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.8.0/lib/addon-fit.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.3.0/css/xterm.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg:        #f5f0e8;
+    --bg2:       #ede6d8;
+    --bg3:       #e4dac8;
+    --border:    rgba(101,67,33,0.15);
+    --border2:   rgba(101,67,33,0.30);
+    --purple:    #7a5c3a;
+    --purple2:   #5c4020;
+    --purple3:   #9b7a52;
+    --purple-dim:#e8dcc8;
+    --text:      #2c1a0e;
+    --text2:     #6b4c2a;
+    --text3:     #a0845a;
+    --green:     #5a7a3a;
+    --amber:     #b87a20;
+    --red:       #a03a2a;
+    --mono:      'DM Mono', 'Menlo', monospace;
+    --sans:      'DM Sans', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── titlebar ── */
+  .titlebar {
+    height: 42px;
+    -webkit-app-region: drag;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 12px;
+  }
+  .titlebar-spacer { width: 64px; -webkit-app-region: no-drag; }
+  .titlebar-title {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    letter-spacing: 0.02em;
+  }
+  .title-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #9b7a52 0%, #7a5c3a 100%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  /* ── project bar ── */
+  .project-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .project-label { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-right: 4px; }
+  .proj-btn {
+    font-size: 12px;
+    font-family: var(--sans);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-app-region: no-drag;
+  }
+  .proj-btn:hover { border-color: var(--border2); color: var(--text); background: var(--purple-dim); }
+  .proj-btn.active { background: var(--purple-dim); border-color: var(--purple); color: var(--purple3); }
+
+  /* ── tabs ── */
+  .tabs {
+    display: flex;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 9px 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+    -webkit-app-region: no-drag;
+  }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--purple3); border-bottom-color: var(--purple); }
+
+  /* ── panes ── */
+  .pane { display: none; flex: 1; flex-direction: column; min-height: 0; }
+  .pane.active { display: flex; }
+
+  /* ── terminal ── */
+  #terminal-wrap {
+    flex: 1;
+    padding: 2px;
+    background: var(--bg);
+    min-height: 0;
+    position: relative;
+  }
+  #terminal-container {
+    width: 100%;
+    height: 100%;
+  }
+  .xterm { height: 100% !important; }
+  .xterm-viewport { background: transparent !important; }
+
+  /* ── status bar ── */
+  .statusbar {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 5px var(--green);
+    transition: all 0.3s;
+  }
+  .status-dot.idle { background: var(--text3); box-shadow: none; }
+  .status-text { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+  .status-right { margin-left: auto; font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .status-path { font-size: 11px; color: var(--purple); font-family: var(--mono); margin-left: 8px; }
+
+  /* ── skills pane ── */
+  .skills-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  /* removed */ .skills-search-wrap-unused {
+    padding: 12px 14px 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+  .skills-search {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .skills-search::placeholder { color: var(--text3); }
+  .skills-search:focus { border-color: var(--purple); }
+  .skills-scroll { flex: 1; overflow-y: auto; padding: 12px 14px; }
+  .skills-scroll::-webkit-scrollbar { width: 4px; }
+  .skills-scroll::-webkit-scrollbar-track { background: transparent; }
+  .skills-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .skill-group { margin-bottom: 20px; }
+  .skill-group-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 4px;
+    padding-left: 2px;
+  }
+  .skill-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border: 1px solid transparent;
+  }
+  .skill-row:hover {
+    background: var(--bg3);
+    border-color: var(--border);
+  }
+  .skill-cmd {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--purple3);
+    font-weight: 500;
+    min-width: 200px;
+    flex-shrink: 0;
+  }
+  .skill-desc { font-size: 12px; color: var(--text2); flex: 1; line-height: 1.4; }
+  .skill-use {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: all 0.15s;
+    opacity: 0;
+    flex-shrink: 0;
+  }
+  .skill-row:hover .skill-use { opacity: 1; }
+  .skill-use:hover { background: var(--purple-dim); border-color: var(--purple); color: var(--purple3); }
+
+  /* ── sessions pane ── */
+  .sessions-pane {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 14px;
+  }
+  .sessions-pane::-webkit-scrollbar { width: 4px; }
+  .sessions-pane::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .session-card {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .session-card:hover { border-color: var(--purple); background: var(--bg3); }
+  .session-top { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+  .session-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--purple-dim);
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .session-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .session-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--purple-dim);
+    color: var(--purple3);
+    border: 1px solid var(--border2);
+    margin-left: auto;
+  }
+  .session-path { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+  .session-skills { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+  /* ── compact / launch btn ── */
+  .launch-row { margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .compact-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+    background: var(--purple-dim);
+    color: var(--purple3);
+    font-size: 12px;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .compact-btn:hover { background: var(--purple2); border-color: var(--purple); color: white; }
+  .compact-btn.primary { background: var(--purple2); border-color: var(--purple3); color: white; }
+  .compact-btn.primary:hover { background: var(--purple); }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="titlebar-spacer"></div>
+  <div class="titlebar-title">
+    <span class="title-icon">⚡</span>
+    Claude Code
+  </div>
+  <div class="titlebar-spacer"></div>
+</div>
+
+<div class="project-bar">
+  <span class="project-label">cd ~/</span>
+  <button class="proj-btn active" onclick="switchProject(this, 'stemforge', '~/Downloads/stemforge')">⚙ StemForge</button>
+  <button class="proj-btn" onclick="switchProject(this, 'groove', '~/Downloads/Groove\\ Fusion\\ website')">🎵 Groove Fusion</button>
+  <button class="proj-btn" onclick="switchProject(this, 'njaw', '~/Projects/not-just-a-wedding')">💍 Not Just A Wedding</button>
+  <button class="proj-btn" onclick="switchProject(this, 'home', '~')">~ home</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="terminal" onclick="switchTab(this)">Terminal</div>
+  <div class="tab" data-tab="skills" onclick="switchTab(this)">Skills</div>
+  <div class="tab" data-tab="sessions" onclick="switchTab(this)">Sessions</div>
+</div>
+
+<!-- TERMINAL -->
+<div class="pane active" id="pane-terminal">
+  <div id="terminal-wrap">
+    <div id="terminal-container"></div>
+  </div>
+  <div class="statusbar">
+    <div class="status-dot" id="status-dot"></div>
+    <span class="status-text" id="status-text">ready</span>
+    <span class="status-path" id="status-path">~/Downloads/stemforge</span>
+    <span class="status-right">Sonnet 4.6 · Claude Pro</span>
+  </div>
+</div>
+
+<!-- SKILLS -->
+<div class="pane" id="pane-skills">
+  <div class="skills-pane">
+    <div class="skills-scroll" id="skills-list"></div>
+  </div>
+</div>
+
+<!-- SESSIONS -->
+<div class="pane" id="pane-sessions">
+  <div class="sessions-pane">
+
+    <div class="session-card" onclick="activateSession('stemforge', '~/Downloads/stemforge')">
+      <div class="session-top">
+        <div class="session-icon">⚙</div>
+        <span class="session-name">StemForge</span>
+        <span class="session-badge">active</span>
+      </div>
+      <div class="session-path">~/Downloads/stemforge</div>
+      <div class="session-skills">skills: /start-server · /debug-visra · /add-module</div>
+    </div>
+
+    <div class="session-card" onclick="activateSession('groove', '~/Downloads/Groove\\ Fusion\\ website')">
+      <div class="session-top">
+        <div class="session-icon">🎵</div>
+        <span class="session-name">Groove Fusion Website</span>
+        <span class="session-badge">2h ago</span>
+      </div>
+      <div class="session-path">~/Downloads/Groove Fusion website</div>
+      <div class="session-skills">skills: /deploy-netlify · /new-release · /seo-check</div>
+    </div>
+
+    <div class="session-card" onclick="activateSession('njaw', '~/Projects/not-just-a-wedding')">
+      <div class="session-top">
+        <div class="session-icon">💍</div>
+        <span class="session-name">Not Just A Wedding</span>
+        <span class="session-badge">yesterday</span>
+      </div>
+      <div class="session-path">~/Projects/not-just-a-wedding</div>
+      <div class="session-skills">skills: /deploy-netlify · /new-page · /stripe-test · /supabase-check</div>
+    </div>
+
+    <div class="launch-row">
+      <button class="compact-btn primary" onclick="sendToTerminal('claude --continue\n')">resume last session</button>
+      <button class="compact-btn" onclick="sendToTerminal('/compact\n')">/compact</button>
+      <button class="compact-btn" onclick="sendToTerminal('claude --version\n')">check version</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const skillData = {
+  "StemForge": [
+    { cmd: "/start-server", desc: "check venv, verify FFmpeg codecs, launch the app" },
+    { cmd: "/debug-visra", desc: "debug visualiser — live preview or video export" },
+    { cmd: "/add-module [Name]", desc: "scaffold a new audio processing module" },
+  ],
+  "Groove Fusion": [
+    { cmd: "/deploy-netlify", desc: "pre-flight checks before dragging to Netlify" },
+    { cmd: "/new-release [Title]", desc: "add a track, EP or album to the catalogue" },
+    { cmd: "/seo-check [file]", desc: "full SEO audit of any page" },
+  ],
+  "Not Just A Wedding": [
+    { cmd: "/deploy-netlify", desc: "pre-flight checks + full Netlify deploy" },
+    { cmd: "/new-page [Name]", desc: "scaffold a new planner page" },
+    { cmd: "/stripe-test", desc: "run Stripe CLI webhook listener locally" },
+    { cmd: "/supabase-check", desc: "verify DB connection, schema and RLS policies" },
+  ],
+  "Global skills": [
+    { cmd: "/brainstorming", desc: "validate ideas before building" },
+    { cmd: "/commit", desc: "conventional commit with proper format" },
+    { cmd: "/git-pushing", desc: "stage, commit and push in one go" },
+    { cmd: "/deep-research", desc: "autonomous research with synthesised report" },
+    { cmd: "/seo", desc: "full SEO umbrella audit" },
+    { cmd: "/stripe-integration", desc: "Stripe best practices — webhooks, PCI" },
+    { cmd: "/react-best-practices", desc: "React performance and patterns" },
+    { cmd: "/python-pro", desc: "modern Python best practices" },
+    { cmd: "/readme", desc: "generate thorough project README" },
+    { cmd: "/compact", desc: "compress context — do at ~50% usage" },
+    { cmd: "/context-manager", desc: "manage long session context intelligently" },
+    { cmd: "/debugging-strategies", desc: "structured debugging methodology" },
+  ]
+}
+
+let term, fitAddon, ptyId
+let currentPath = '~/Downloads/stemforge'
+
+function initTerminal() {
+  term = new Terminal({
+    theme: {
+      background: '#f5f0e8',
+      foreground: '#2c1a0e',
+      cursor: '#7a5c3a',
+      cursorAccent: '#f5f0e8',
+      selectionBackground: '#c8b49a',
+      black: '#2c1a0e',
+      red: '#a03a2a',
+      green: '#5a7a3a',
+      yellow: '#b87a20',
+      blue: '#7a5c3a',
+      magenta: '#9b7a52',
+      cyan: '#4a7a6a',
+      white: '#f5f0e8',
+      brightBlack: '#a0845a',
+      brightBlue: '#9b7a52',
+      brightGreen: '#7a9a5a',
+    },
+    fontFamily: "'DM Mono', 'Menlo', monospace",
+    fontSize: 13,
+    lineHeight: 1.5,
+    cursorBlink: true,
+    cursorStyle: 'bar',
+    scrollback: 2000,
+    allowTransparency: true,
+  })
+
+  fitAddon = new FitAddon.FitAddon()
+  term.loadAddon(fitAddon)
+  term.open(document.getElementById('terminal-container'))
+  fitAddon.fit()
+
+  window.addEventListener('resize', () => fitAddon.fit())
+
+  if (window.electronAPI) {
+    const { cols, rows } = term
+    window.electronAPI.spawnPty({ cols, rows, projectPath: expandPath(currentPath) }).then(id => {
+      ptyId = id
+      term.onData(data => window.electronAPI.writePty(id, data))
+      term.onResize(({ cols, rows }) => window.electronAPI.resizePty(id, cols, rows))
+      window.electronAPI.onPtyData(({ id: pid, data }) => { if (pid === id) term.write(data) })
+      window.electronAPI.onPtyExit(() => {
+        term.write('\r\n\x1b[33mSession ended. Press any key to restart.\x1b[0m\r\n')
+      })
+      window.electronAPI.writePty(id, `cd ${currentPath} && claude\n`)
+    })
+  } else {
+    term.write('\x1b[1;35m⚡ Claude Code Launcher\x1b[0m\r\n')
+    term.write('\x1b[2m(Running in browser preview mode — terminal is live in the Electron app)\x1b[0m\r\n\r\n')
+    term.write('\x1b[32m$\x1b[0m cd ' + currentPath + '\r\n')
+    term.write('\x1b[32m$\x1b[0m claude\r\n')
+    term.write('\x1b[2m...\x1b[0m\r\n')
+  }
+}
+
+function expandPath(p) {
+  return p.replace('~', require ? require('os').homedir() : '/Users/nealemanley')
+}
+
+function sendToTerminal(text) {
+  switchTab(document.querySelector('[data-tab="terminal"]'))
+  if (window.electronAPI && ptyId) {
+    window.electronAPI.writePty(ptyId, text)
+  } else if (term) {
+    term.write(text)
+  }
+}
+
+function switchProject(btn, proj, path) {
+  document.querySelectorAll('.proj-btn').forEach(b => b.classList.remove('active'))
+  btn.classList.add('active')
+  currentPath = path
+  document.getElementById('status-path').textContent = path.replace(/\\\\/g, ' ')
+
+  if (window.electronAPI && ptyId) {
+    window.electronAPI.writePty(ptyId, `\x03cd ${path} && claude\n`)
+  }
+}
+
+function switchTab(el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'))
+  el.classList.add('active')
+  const tab = el.dataset.tab
+  document.getElementById('pane-' + tab).classList.add('active')
+  if (tab === 'terminal') setTimeout(() => { if(fitAddon) fitAddon.fit() }, 50)
+}
+
+function activateSession(proj, path) {
+  const btns = document.querySelectorAll('.proj-btn')
+  const idx = { stemforge: 0, groove: 1, njaw: 2, home: 3 }[proj] || 0
+  btns.forEach(b => b.classList.remove('active'))
+  if (btns[idx]) btns[idx].classList.add('active')
+  currentPath = path
+  document.getElementById('status-path').textContent = path.replace(/\\\\/g, ' ')
+  switchTab(document.querySelector('[data-tab="terminal"]'))
+  if (window.electronAPI && ptyId) {
+    window.electronAPI.writePty(ptyId, `\x03cd ${path} && claude\n`)
+  }
+}
+
+function buildSkills() {
+  const list = document.getElementById('skills-list')
+  list.innerHTML = ''
+  Object.entries(skillData).forEach(([group, skills]) => {
+    const filtered = skills
+    if (!filtered.length) return
+    const g = document.createElement('div')
+    g.className = 'skill-group'
+    g.innerHTML = `<div class="skill-group-title">${group}</div>`
+    filtered.forEach(s => {
+      const row = document.createElement('div')
+      row.className = 'skill-row'
+      row.innerHTML = `<span class="skill-cmd">${s.cmd}</span><span class="skill-desc">${s.desc}</span><button class="skill-use">use →</button>`
+      row.querySelector('.skill-use').addEventListener('click', (e) => {
+        e.stopPropagation()
+        const cmd = s.cmd.includes('[') ? s.cmd.split(' ')[0] + ' ' : s.cmd + '\n'
+        sendToTerminal(cmd)
+      })
+      g.appendChild(row)
+    })
+    list.appendChild(g)
+  })
+}
+
+
+window.addEventListener('DOMContentLoaded', () => {
+  initTerminal()
+  buildSkills()
+})
+</script>
+</body>
+</html>
