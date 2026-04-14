@@ -1,0 +1,26 @@
+{
+  "name": "claude-code-launcher",
+  "version": "1.0.0",
+  "description": "Claude Code desktop launcher",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "build": {
+    "appId": "com.blake.claudecodelauncher",
+    "productName": "Claude Code",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": "dmg"
+    },
+    "files": ["src/**/*", "assets/**/*"]
+  }
+}
