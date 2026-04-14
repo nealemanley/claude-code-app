@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Code</title>
-<script src="../node_modules/@xterm/xterm/lib/xterm.js"></script>
-<script src="../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
-<link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -307,6 +304,57 @@
   .compact-btn:hover { background: var(--purple2); border-color: var(--purple); color: white; }
   .compact-btn.primary { background: var(--purple2); border-color: var(--purple3); color: white; }
   .compact-btn.primary:hover { background: var(--purple); }
+
+  /* ── launcher pane ── */
+  .launcher-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    gap: 24px;
+  }
+  .launcher-intro { text-align: center; }
+  .launcher-icon { font-size: 36px; margin-bottom: 10px; }
+  .launcher-title { font-size: 18px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .launcher-sub { font-size: 13px; color: var(--text3); }
+  .launcher-cards { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 8px; }
+  .launcher-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .launcher-card:hover { border-color: var(--purple); background: var(--bg3); transform: translateX(2px); }
+  .lc-icon { font-size: 22px; width: 36px; text-align: center; flex-shrink: 0; }
+  .lc-body { flex: 1; }
+  .lc-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .lc-path { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .lc-skills { font-size: 11px; color: var(--purple3); margin-top: 3px; }
+  .lc-arrow { font-size: 16px; color: var(--text3); transition: transform 0.15s; }
+  .launcher-card:hover .lc-arrow { transform: translateX(3px); color: var(--purple); }
+  .launcher-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .action-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--text2);
+    font-size: 12px;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .action-btn:hover { background: var(--purple-dim); border-color: var(--purple); color: var(--purple); }
+  /* hide old terminal styles that are no longer needed */
+  #terminal-wrap, #terminal-container { display: none; }
+  .statusbar { display: none; }
 </style>
 </head>
 <body>
@@ -336,14 +384,54 @@
 
 <!-- TERMINAL -->
 <div class="pane active" id="pane-terminal">
-  <div id="terminal-wrap">
-    <div id="terminal-container"></div>
-  </div>
-  <div class="statusbar">
-    <div class="status-dot" id="status-dot"></div>
-    <span class="status-text" id="status-text">ready</span>
-    <span class="status-path" id="status-path">~/Downloads/stemforge</span>
-    <span class="status-right">Sonnet 4.6 · Claude Pro</span>
+  <div class="launcher-pane">
+    <div class="launcher-intro">
+      <div class="launcher-icon">⚡</div>
+      <div class="launcher-title">Open in terminal</div>
+      <div class="launcher-sub">Choose a project to launch Claude Code in iTerm2</div>
+    </div>
+    <div class="launcher-cards">
+      <div class="launcher-card" onclick="launchProject('stemforge', '~/Downloads/stemforge')">
+        <div class="lc-icon">⚙</div>
+        <div class="lc-body">
+          <div class="lc-name">StemForge</div>
+          <div class="lc-path">~/Downloads/stemforge</div>
+          <div class="lc-skills">3 skills</div>
+        </div>
+        <div class="lc-arrow">→</div>
+      </div>
+      <div class="launcher-card" onclick="launchProject('groove', String.raw`~/Downloads/Groove\ Fusion\ website`)">
+        <div class="lc-icon">🎵</div>
+        <div class="lc-body">
+          <div class="lc-name">Groove Fusion</div>
+          <div class="lc-path">~/Downloads/Groove Fusion website</div>
+          <div class="lc-skills">3 skills</div>
+        </div>
+        <div class="lc-arrow">→</div>
+      </div>
+      <div class="launcher-card" onclick="launchProject('njaw', '~/Projects/not-just-a-wedding')">
+        <div class="lc-icon">💍</div>
+        <div class="lc-body">
+          <div class="lc-name">Not Just A Wedding</div>
+          <div class="lc-path">~/Projects/not-just-a-wedding</div>
+          <div class="lc-skills">4 skills</div>
+        </div>
+        <div class="lc-arrow">→</div>
+      </div>
+      <div class="launcher-card" onclick="launchProject('home', '~')">
+        <div class="lc-icon">⌂</div>
+        <div class="lc-body">
+          <div class="lc-name">Home directory</div>
+          <div class="lc-path">~</div>
+          <div class="lc-skills">global skills</div>
+        </div>
+        <div class="lc-arrow">→</div>
+      </div>
+    </div>
+    <div class="launcher-actions">
+      <button class="action-btn" onclick="launchCmd('claude --continue')">↩ resume last session</button>
+      <button class="action-btn" onclick="launchCmd('claude --version')">check version</button>
+    </div>
   </div>
 </div>
 
@@ -431,69 +519,23 @@ let skillData = {
   ]
 }
 
-let term, fitAddon, ptyId
-let currentPath = '~/Downloads/stemforge'
-
-function initTerminal() {
-  term = new Terminal({
-    theme: {
-      background: '#f5f0e8',
-      foreground: '#2c1a0e',
-      cursor: '#7a5c3a',
-      cursorAccent: '#f5f0e8',
-      selectionBackground: '#c8b49a',
-      black: '#2c1a0e',
-      red: '#a03a2a',
-      green: '#5a7a3a',
-      yellow: '#b87a20',
-      blue: '#7a5c3a',
-      magenta: '#9b7a52',
-      cyan: '#4a7a6a',
-      white: '#f5f0e8',
-      brightBlack: '#a0845a',
-      brightBlue: '#9b7a52',
-      brightGreen: '#7a9a5a',
-    },
-    fontFamily: "'DM Mono', 'Menlo', monospace",
-    fontSize: 13,
-    lineHeight: 1.5,
-    cursorBlink: true,
-    cursorStyle: 'bar',
-    scrollback: 2000,
-    allowTransparency: true,
-  })
-
-  fitAddon = new FitAddon.FitAddon()
-  term.loadAddon(fitAddon)
-  term.open(document.getElementById('terminal-container'))
-  fitAddon.fit()
-
-  window.addEventListener('resize', () => fitAddon.fit())
-
+function launchProject(proj, projPath) {
   if (window.electronAPI) {
-    const { cols, rows } = term
-    window.electronAPI.spawnPty({ cols, rows, projectPath: expandPath(currentPath) }).then(id => {
-      ptyId = id
-      term.onData(data => window.electronAPI.writePty(id, data))
-      term.onResize(({ cols, rows }) => window.electronAPI.resizePty(id, cols, rows))
-      window.electronAPI.onPtyData(({ id: pid, data }) => { if (pid === id) term.write(data) })
-      window.electronAPI.onPtyExit(() => {
-        term.write('\r\n\x1b[33mSession ended. Press any key to restart.\x1b[0m\r\n')
-      })
-      window.electronAPI.writePty(id, `cd ${currentPath} && claude\n`)
-    })
-  } else {
-    term.write('\x1b[1;35m⚡ Claude Code Launcher\x1b[0m\r\n')
-    term.write('\x1b[2m(Running in browser preview mode — terminal is live in the Electron app)\x1b[0m\r\n\r\n')
-    term.write('\x1b[32m$\x1b[0m cd ' + currentPath + '\r\n')
-    term.write('\x1b[32m$\x1b[0m claude\r\n')
-    term.write('\x1b[2m...\x1b[0m\r\n')
+    window.electronAPI.launchIterm(projPath)
   }
 }
 
-function expandPath(p) {
-  return p.replace('~', require ? require('os').homedir() : '/Users/nealemanley')
+function launchCmd(cmd) {
+  if (window.electronAPI) {
+    window.electronAPI.launchItermCmd(cmd)
+  }
 }
+
+function sendToTerminal(cmd) {
+  launchCmd(cmd)
+}
+
+function initTerminal() {}
 
 function sendToTerminal(text) {
   switchTab(document.querySelector('[data-tab="terminal"]'))

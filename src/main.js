@@ -198,3 +198,33 @@ ipcMain.on('pty-kill', (event, { id }) => {
   const proc = global.ptyProcesses?.[id]
   if (proc) { proc.kill(); delete global.ptyProcesses[id] }
 })
+
+const { exec } = require('child_process')
+
+function launchIterm(projectPath, cmd) {
+  const cdCmd = projectPath ? `cd ${projectPath} && ` : ''
+  const fullCmd = cmd ? `${cdCmd}${cmd}` : `${cdCmd}claude`
+  const script = `
+    tell application "iTerm"
+      activate
+      set newWindow to (create window with default profile)
+      tell current session of newWindow
+        write text "${fullCmd.replace(/"/g, '\\"')}"
+      end tell
+    end tell`
+  exec(`osascript -e '${script.replace(/'/g, "'\\''")}'`, (err) => {
+    if (err) {
+      // Fall back to Terminal.app if iTerm not available
+      const fallback = `
+        tell application "Terminal"
+          activate
+          do script "${fullCmd.replace(/"/g, '\\"')}"
+        end tell`
+      exec(`osascript -e '${fallback.replace(/'/g, "'\\''")}'`)
+    }
+  })
+}
+
+ipcMain.on('launch-iterm', (event, { path: projPath, cmd }) => {
+  launchIterm(projPath, cmd)
+})
